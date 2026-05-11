@@ -1,0 +1,96 @@
+
+<h2 class="sr-only">네이버 트렌드 검색 사이트별 꺾은선 그래프 (2024년 1월 ~ 2026년 4월)</h2>
+
+<style>
+.legend-btn {
+  display: flex; align-items: center; gap: 6px;
+  cursor: pointer; font-size: 12px; padding: 5px 10px;
+  border-radius: 6px; border: 0.5px solid rgba(128,128,128,0.3);
+  background: transparent; color: var(--color-text-primary);
+  transition: opacity 0.2s;
+}
+.legend-btn.off { opacity: 0.35; }
+.chart-title { font-size: 15px; font-weight: 500; color: var(--color-text-primary); margin-bottom: 12px; }
+.chart-sub { font-size: 12px; color: var(--color-text-secondary); margin-bottom: 14px; }
+</style>
+
+<div style="padding: 1rem 0;">
+  <div class="chart-title">네이버 트렌드 검색</div>
+  <div class="chart-sub">주 키워드+보조키워드 검색 / 상대 수치 (최대 검색량 = 100)</div>
+  <div id="legend1" style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px;"></div>
+  <div style="position: relative; width: 100%; height: 420px;">
+    <canvas id="chart1" role="img" aria-label="네이버 트렌드 검색 사이트별 꺾은선 그래프"></canvas>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+const labels = ['2024_1월','2024_2월','2024_3월','2024_4월','2024_5월','2024_6월','2024_7월','2024_8월','2024_9월','2024_10월','2024_11월','2024_12월','2025_1월','2025_2월','2025_3월','2025_4월','2025_5월','2025_6월','2025_7월','2025_8월','2025_9월','2025_10월','2025_11월','2025_12월','2026_1월','2026_2월','2026_3월','2026_4월'];
+
+const sites = [
+  { name: 'NE Tutor',         color: '#5B8DEF', data: [88.90987,70.88448,72.0491,54.45388,65.61745,50.47738,100,73.20323,51.01248,59.01794,60.53929,75.6164,76.5502,78.94239,74.13702,48.09568,56.38442,48.08519,77.72531,73.71734,56.60476,52.62826,61.3157,72.37435,82.81397,69.52051,74.44129,45.67201] },
+  { name: '성취 테스트',       color: '#A0A09A', data: [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0] },
+  { name: 'NE Kids',          color: '#E67E3C', data: [44.85559,37.54512,100,70.2166,37.27436,32.58122,24.45848,37.72563,21.20938,24.63898,31.8592,21.29963,29.42238,24.90974,62.09386,42.05776,17.96028,22.56317,18.86281,18.59205,22.02166,12.27436,17.05776,11.73285,17.41877,9.20577,36.55234,18.05054] },
+  { name: 'NELT',             color: '#9B5DE5', data: [52.97193,36.17346,54.18367,25.56122,47.51275,37.7551,100,53.34183,26.88775,34.33673,43.67346,65.89285,50.3954,51.36479,39.38775,24.08163,29.50255,32.14285,56.79846,63.23979,33.53316,27.74234,37.62755,54.11989,52.10459,57.43622,42.05357,23.67346] },
+  { name: '아이챌린지',        color: '#F15BB5', data: [100,87.64007,86.32992,72.63513,73.08009,68.82003,75.65095,73.49208,66.81773,70.43506,66.29037,66.85069,70.9377,67.43572,62.87903,63.39815,57.89386,48.36025,54.17765,55.23236,50.26367,42.46044,44.63579,44.79235,49.382,41.24917,45.5257,35.82729] },
+  { name: 'NE능률 주니어랩',   color: '#00BBD4', data: [89.17525,82.47422,100,37.62886,64.94845,69.58762,25.77319,29.8969,11.85567,18.04123,94.84536,19.58762,28.35051,27.31958,19.58762,27.83505,19.07216,19.07216,5.6701,6.70103,0,5.6701,8.24742,10.82474,9.79381,2.57731,20.61855,25.25773] },
+  { name: 'NE Books',         color: '#FFB703', data: [100,76.45137,71.87953,47.73222,57.32946,42.68867,67.94267,63.78809,37.73584,47.6415,44.86574,54.82583,66.12844,61.73802,59.01669,35.1415,44.10377,35.93976,54.62626,51.26995,37.44557,36.2119,37.79027,51.86865,62.66328,48.25834,54.57184,31.44049] },
+  { name: 'NE Build & Grow',  color: '#FB5607', data: [4.72103,1.07296,2.5751,3.21888,5.15021,1.93133,0,2.14592,4.61373,3.43347,5.79399,3.43347,3.96995,6.33047,1.07296,35.9442,44.52789,72.85407,35.51502,5.57939,41.6309,24.35622,13.19742,20.38626,20.38626,60.62231,100,81.00858] },
+  { name: 'NE Times',         color: '#2EC4B6', data: [100,88.54411,94.74195,85.09276,86.70501,76.95049,81.22822,74.47136,63.35574,75.07899,73.41002,75.04658,70.10451,69.48067,71.32787,62.50506,65.83488,56.61508,66.34529,64.31175,64.20643,53.19614,58.34886,65.13813,74.39844,53.09892,77.4204,67.2932] }
+];
+
+const isDark = matchMedia('(prefers-color-scheme: dark)').matches;
+const textColor = isDark ? '#cccccc' : '#555555';
+const gridColor = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)';
+
+const chart1 = new Chart(document.getElementById('chart1').getContext('2d'), {
+  type: 'line',
+  data: {
+    labels,
+    datasets: sites.map(s => ({
+      label: s.name, data: s.data, borderColor: s.color,
+      borderWidth: 2, pointRadius: 2, pointHoverRadius: 5,
+      tension: 0.3, fill: false
+    }))
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    interaction: { mode: 'index', intersect: false },
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        backgroundColor: isDark ? '#2a2a2a' : '#fff',
+        borderColor: isDark ? '#444' : '#ddd', borderWidth: 1,
+        titleColor: textColor, bodyColor: textColor,
+        filter: item => !chart1.getDatasetMeta(item.datasetIndex).hidden,
+        callbacks: { label: ctx => ` ${ctx.dataset.label}: ${Number(ctx.parsed.y).toFixed(2)}` }
+      }
+    },
+    scales: {
+      x: { ticks: { color: textColor, font: { size: 10 }, maxRotation: 45, autoSkip: true, maxTicksLimit: 14 }, grid: { color: gridColor } },
+      y: { min: 0, max: 110, ticks: { color: textColor, font: { size: 11 } }, grid: { color: gridColor } }
+    }
+  }
+});
+
+const legend1 = document.getElementById('legend1');
+sites.forEach((s, i) => {
+  const btn = document.createElement('button');
+  btn.className = 'legend-btn';
+  const sw = document.createElement('canvas');
+  sw.width = 24; sw.height = 4; sw.style.cssText = 'flex-shrink:0;display:block;';
+  const c = sw.getContext('2d');
+  c.strokeStyle = s.color; c.lineWidth = 2.5;
+  c.beginPath(); c.moveTo(0,2); c.lineTo(24,2); c.stroke();
+  const txt = document.createElement('span');
+  txt.textContent = s.name;
+  btn.appendChild(sw); btn.appendChild(txt);
+  btn.addEventListener('click', () => {
+    const meta = chart1.getDatasetMeta(i);
+    meta.hidden = !meta.hidden;
+    btn.classList.toggle('off', meta.hidden);
+    chart1.update();
+  });
+  legend1.appendChild(btn);
+});
+</script>
