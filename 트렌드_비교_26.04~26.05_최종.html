@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>사이트 트렌드 비교 26.04~26.05</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap');
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Noto Sans KR', sans-serif;
+    background: #ffffff;
+    color: #1a1f2e;
+    min-height: 100vh;
+    padding: 36px 28px;
+  }
+
+  header {
+    margin-bottom: 32px;
+    padding-bottom: 20px;
+    border-bottom: 2px solid #e8ecf4;
+  }
+
+  header h1 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #1a1f2e;
+    margin-bottom: 6px;
+  }
+
+  header p {
+    font-size: 0.85rem;
+    color: #8892aa;
+  }
+
+  .chart-card {
+    background: #ffffff;
+    border: 1px solid #e8ecf4;
+    border-radius: 14px;
+    padding: 28px 32px 24px;
+    box-shadow: 0 2px 16px rgba(0,0,0,0.06);
+  }
+
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 28px;
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 6px 14px;
+    border-radius: 20px;
+    border: 1.5px solid transparent;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 0.82rem;
+    font-weight: 500;
+    user-select: none;
+  }
+
+  .legend-item:hover { opacity: 0.75; }
+
+  .legend-item.disabled {
+    opacity: 0.25;
+    filter: grayscale(1);
+  }
+
+  .legend-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .chart-wrapper {
+    position: relative;
+    width: 100%;
+  }
+
+  canvas { width: 100% !important; height: 420px !important; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>사이트 트렌드 비교 — 2026.04.12 ~ 2026.05.11</h1>
+  <p>어휘 출제 서비스 · 검색 지표 분석 · 일별</p>
+</header>
+
+<div class="chart-card">
+  <div class="legend" id="legend"></div>
+  <div class="chart-wrapper">
+    <canvas id="chart"></canvas>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script>
+const COLORS = ['#3b82f6','#ef4444','#f59e0b','#10b981','#f97316','#8b5cf6','#06b6d4','#ec4899'];
+const SERVICES = ['NE Tutor','동아출판','이투스북','쎄듀북','해커스북','YBM북샘','클래스카드','100발100중'];
+
+const DATES = ["2026-04-12","2026-04-13","2026-04-14","2026-04-15","2026-04-16","2026-04-17","2026-04-18","2026-04-19","2026-04-20","2026-04-21","2026-04-22","2026-04-23","2026-04-24","2026-04-25","2026-04-26","2026-04-27","2026-04-28","2026-04-29","2026-04-30","2026-05-01","2026-05-02","2026-05-03","2026-05-04","2026-05-05","2026-05-06","2026-05-07","2026-05-08","2026-05-09","2026-05-10","2026-05-11"];
+
+const VALUES = {
+  "NE Tutor":   [0.69633,3.36277,3.19293,2.83627,2.87024,2.44565,1.00203,0.54347,3.2269,2.88722,2.87024,2.83627,2.10597,0.81521,1.01902,3.65149,3.04008,2.88722,3.31182,0.66236,0.52649,1.05298,2.61548,0.67934,4.67051,4.51766,3.90625,1.5625,0.78125,4.77241],
+  "동아출판":   [16.47418,21.19565,19.61616,21.1447,18.25747,16.21942,14.28328,15.13247,18.90285,20.39741,19.786,17.30638,15.96467,13.41711,14.97961,17.42527,14.55502,12.16032,7.89741,4.92527,4.39877,4.63654,6.47078,5.38383,12.26222,11.93953,9.4769,6.02921,6.40285,12.6019],
+  "이투스북":   [50.69633,56.86141,55.16304,54.27989,47.38451,45.32948,41.89877,43.2235,49.50747,49.89809,50.3057,49.28668,45.10869,38.99456,37.75475,48.21671,50.11888,49.88111,50.8322,44.1576,40.69293,43.88586,53.73641,48.55638,64.75883,100.0,55.87635,43.66508,45.19361,55.99524],
+  "쎄듀북":     [3.24388,6.53872,5.94429,5.58763,5.80842,4.73845,3.10801,2.90421,5.9273,5.31589,5.67255,5.28192,4.7894,3.05706,3.29483,5.75747,6.25,6.67459,6.98029,4.48369,4.21195,3.39673,9.12024,4.19497,13.11141,12.77173,10.58084,6.43682,6.47078,13.80774],
+  "해커스북":   [49.96603,73.67527,66.64402,66.91576,58.49184,53.92323,41.7629,45.7201,71.50135,65.31929,60.90353,60.59782,51.95312,64.50407,56.38586,67.69701,60.81861,58.18614,51.18885,38.07744,31.70855,39.45312,54.48369,47.87703,63.7398,58.0163,52.71739,41.32133,47.45244,68.58016],
+  "YBM북샘":    [24.59239,31.18206,23.87907,24.96603,23.04687,21.73913,16.54211,15.3023,28.60054,49.23573,24.59239,26.85122,23.96399,21.1447,22.53736,27.75135,24.32065,27.10597,24.84714,15.91372,12.43206,17.52717,24.86413,44.0557,31.47078,26.27377,24.09986,19.83695,21.82404,35.36005],
+  "클래스카드": [26.63043,62.75475,64.52105,63.34918,63.70584,48.04687,17.64605,23.18274,57.57472,59.79959,56.62364,52.30978,42.00067,17.17051,18.97078,47.0788,42.22146,42.56114,39.69089,10.36005,9.20516,11.44701,25.54347,15.06453,63.07744,61.53192,51.49456,14.79279,19.12364,72.24864],
+  "100발100중": [3.97418,5.9273,5.34986,4.95923,4.90828,6.18206,12.6019,10.88654,5.87635,3.73641,4.161,3.99116,3.82133,2.81929,2.7004,3.51562,2.3947,1.63043,0.98505,0.44157,0.32269,0.39062,1.17187,0.45855,1.17187,1.34171,1.2398,0.79823,0.74728,1.5625]
+};
+
+const activeStates = {};
+SERVICES.forEach(s => activeStates[s] = true);
+
+// Build legend
+const legendEl = document.getElementById('legend');
+SERVICES.forEach((s, i) => {
+  const item = document.createElement('div');
+  item.className = 'legend-item';
+  item.style.borderColor = COLORS[i];
+  item.style.color = COLORS[i];
+  item.style.background = COLORS[i] + '18';
+  item.innerHTML = `<span class="legend-dot" style="background:${COLORS[i]}"></span>${s}`;
+  item.addEventListener('click', () => {
+    const isActive = activeStates[s];
+    activeStates[s] = !isActive;
+    const ds = chart.data.datasets.find(d => d.label === s);
+    if (ds) ds.hidden = isActive;
+    item.classList.toggle('disabled', isActive);
+    chart.update();
+  });
+  legendEl.appendChild(item);
+});
+
+// Build datasets
+const datasets = SERVICES.map((s, i) => ({
+  label: s,
+  data: VALUES[s],
+  borderColor: COLORS[i],
+  backgroundColor: COLORS[i] + '12',
+  borderWidth: 2,
+  pointRadius: 3,
+  pointHoverRadius: 6,
+  pointBackgroundColor: '#fff',
+  pointBorderColor: COLORS[i],
+  pointBorderWidth: 2,
+  tension: 0.35,
+  fill: false,
+}));
+
+const ctx = document.getElementById('chart').getContext('2d');
+const chart = new Chart(ctx, {
+  type: 'line',
+  data: { labels: DATES, datasets },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    interaction: { mode: 'index', intersect: false },
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        backgroundColor: '#ffffffee',
+        borderColor: '#d1d9ee',
+        borderWidth: 1,
+        titleColor: '#1a1f2e',
+        bodyColor: '#4a5568',
+        titleFont: { family: 'Noto Sans KR', size: 12, weight: '700' },
+        bodyFont: { family: 'Noto Sans KR', size: 12 },
+        padding: 14,
+        boxPadding: 4,
+        callbacks: {
+          label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y.toFixed(2)}`
+        }
+      }
+    },
+    scales: {
+      x: {
+        ticks: {
+          color: '#8892aa',
+          font: { family: 'Noto Sans KR', size: 10 },
+          maxRotation: 45,
+          autoSkip: true,
+          maxTicksLimit: 15,
+        },
+        grid: { color: '#f0f2f8' },
+        border: { color: '#e8ecf4' }
+      },
+      y: {
+        min: 0,
+        max: 105,
+        ticks: {
+          color: '#8892aa',
+          font: { family: 'Noto Sans KR', size: 11 },
+          callback: v => v.toFixed(0)
+        },
+        grid: { color: '#f0f2f8' },
+        border: { color: '#e8ecf4' },
+        title: {
+          display: true,
+          text: '검색 지수',
+          color: '#8892aa',
+          font: { family: 'Noto Sans KR', size: 11 }
+        }
+      }
+    }
+  }
+});
+</script>
+</body>
+</html>
